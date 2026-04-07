@@ -5,7 +5,7 @@ list.am Car Listing Monitor
 Periodically scrapes list.am with pre-applied filters and alerts about new listings.
 
 Filters enforced:
-  - Price: <= $10,000 (or ~3,900,000 AMD)
+  - Price: <= $15,001 (or ~5,850,390 AMD)
   - Engine: Gasoline, Hybrid, Factory LPG/CNG, >1.2L
   - Condition: Not damaged
   - Steering wheel: Left
@@ -35,7 +35,7 @@ SITE = "https://www.list.am"
 
 FILTER_PARAMS = (
     "n=0&bid=55%2C76%2C11%2C13%2C14%2C22%2C27%2C31%2C38%2C53%2C60%2C64%2C75%2C79"
-    "&crc=1&price2=10000"
+    "&crc=1&price2=15001"
     "&_a27=0"           # not damaged
     "&_a15=1%2C4%2C6"  # gasoline, hybrid, factory LPG/CNG
     "&_a28_1=13"        # engine size > 1.2L
@@ -48,8 +48,8 @@ FILTER_PARAMS = (
 
 CATEGORY = "/category/23"
 
-MAX_PRICE_USD = 10_000
-MAX_PRICE_AMD = 3_900_000
+MAX_PRICE_USD = 15_001
+MAX_PRICE_AMD = 5_850_390
 AMD_PER_USD = 390
 
 ALLOWED_FUELS = {"Benzin", "Hybrid", "Factory LPG/CNG"}
@@ -505,7 +505,7 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
   </div>
   <div class="filter-group">
     <label>Price max ($)</label>
-    <input type="number" id="fPriceMax" placeholder="10000">
+    <input type="number" id="fPriceMax" placeholder="15001">
   </div>
   <div class="filter-group">
     <label>Year min</label>
@@ -752,7 +752,7 @@ def run_scan() -> list[dict]:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n{'='*70}")
     print(f"  list.am Car Monitor — scan at {now}")
-    print(f"  Filters: price <= $10,000 | engine: gas/hybrid/factory LPG | >1.2L")
+    print(f"  Filters: price <= $15,001 | engine: gas/hybrid/factory LPG | >1.2L")
     print(f"           condition: not damaged | steering: left")
     print(f"           freshness: renewed >= Jul 2025, or posted >= Nov 2024")
     print(f"{'='*70}\n")
