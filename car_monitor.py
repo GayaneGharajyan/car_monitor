@@ -541,6 +541,12 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
       <input type="checkbox" id="fNewOnly"> New only
     </label>
   </div>
+  <div class="filter-group">
+    <label>&nbsp;</label>
+    <label class="fuel-checks" style="padding-top:0">
+      <input type="checkbox" id="fNewFirst" checked> New first
+    </label>
+  </div>
 </div>
 
 <div class="count-bar">Showing <span id="visCount">0</span> of <span id="totalCount">0</span> listings</div>
@@ -658,7 +664,9 @@ function applyFilters(cars) {{
 }}
 
 function sortCars(cars) {{
+  const newFirst = document.getElementById("fNewFirst").checked;
   return [...cars].sort((a, b) => {{
+    if (newFirst && a.is_new !== b.is_new) return a.is_new ? -1 : 1;
     let va = a[sortCol], vb = b[sortCol];
     if (va == null) va = sortAsc ? Infinity : -Infinity;
     if (vb == null) vb = sortAsc ? Infinity : -Infinity;
@@ -736,6 +744,7 @@ document.querySelectorAll("th[data-col]").forEach(th => {{
   document.getElementById(id).addEventListener("input", render);
 }});
 document.getElementById("fNewOnly").addEventListener("change", render);
+document.getElementById("fNewFirst").addEventListener("change", render);
 
 initFuelChecks();
 initMakeModel();
