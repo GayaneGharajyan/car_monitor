@@ -441,6 +441,30 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
   tr:hover td {{ background: #1c2128; }}
   tr.new-row td {{ background: #122117; }}
   tr.new-row:hover td {{ background: #1a3024; }}
+  tr.row-liked td {{ background: #1a2332; }}
+  tr.row-liked:hover td {{ background: #222c3d; }}
+  tr.row-disliked td {{ background: #2a1c1c; }}
+  tr.row-disliked:hover td {{ background: #321f1f; }}
+  th.th-actions {{
+    cursor: default; user-select: none;
+  }}
+  th.th-actions:hover {{ color: #8b949e; }}
+  .listing-actions {{
+    display: flex; gap: 6px; align-items: center; white-space: nowrap;
+  }}
+  .btn-like, .btn-dislike {{
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0;
+    background: #21262d; border: 1px solid #30363d; border-radius: 6px;
+    cursor: pointer; font-size: 14px; line-height: 1;
+    vertical-align: middle;
+  }}
+  .btn-like {{ color: #c49aab; }}
+  .btn-like:hover {{ color: #f472b6; border-color: #db2777; }}
+  .btn-like.is-on {{ color: #f472b6; border-color: #ec4899; background: rgba(236,72,153,0.14); }}
+  .btn-dislike {{ color: #d4a72c; }}
+  .btn-dislike:hover {{ color: #f0d060; border-color: #b8a030; }}
+  .btn-dislike.is-on {{ color: #f0d060; border-color: #ca8a04; background: rgba(202,138,4,0.18); }}
   .badge {{
     display: inline-block; background: #238636; color: #fff;
     font-size: 10px; font-weight: 700; padding: 2px 6px;
@@ -474,7 +498,7 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
     .filter-group input[type="text"] {{ min-width: 0; }}
     .filter-group select[multiple] {{ min-height: 50px; }}
     .fuel-checks {{ flex-wrap: wrap; gap: 8px; }}
-    table {{ font-size: 12px; min-width: 600px; }}
+    table {{ font-size: 12px; min-width: 680px; }}
     th, td {{ padding: 6px 5px; }}
   }}
 </style>
@@ -544,6 +568,18 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
   <div class="filter-group">
     <label>&nbsp;</label>
     <label class="fuel-checks" style="padding-top:0">
+      <input type="checkbox" id="fLikedOnly"> Liked only
+    </label>
+  </div>
+  <div class="filter-group">
+    <label>&nbsp;</label>
+    <label class="fuel-checks" style="padding-top:0">
+      <input type="checkbox" id="fHideDisliked"> Hide disliked (✕)
+    </label>
+  </div>
+  <div class="filter-group">
+    <label>&nbsp;</label>
+    <label class="fuel-checks" style="padding-top:0">
       <input type="checkbox" id="fNewFirst" checked> New first
     </label>
   </div>
@@ -557,6 +593,7 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
     <tr>
       <th data-col="make">Make <span class="arrow"></span></th>
       <th data-col="model">Model <span class="arrow"></span></th>
+      <th class="th-actions">Mark</th>
       <th data-col="price_usd">Price ($) <span class="arrow"></span></th>
       <th data-col="year">Year <span class="arrow"></span></th>
       <th data-col="mileage">Mileage <span class="arrow"></span></th>
@@ -574,6 +611,51 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
 const DATA = {cars_json};
 
 let sortCol = "price_usd", sortAsc = true;
+
+const LS_LIKED = "carMonitorLiked";
+const LS_DISLIKED = "carMonitorDisliked";
+
+function loadIdSet(key) {{
+  try {{
+    const raw = localStorage.getItem(key);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  }} catch {{
+    return new Set();
+  }}
+}}
+
+function saveIdSet(key, set) {{
+  localStorage.setItem(key, JSON.stringify([...set]));
+}}
+
+let likedIds = loadIdSet(LS_LIKED);
+let dislikedIds = loadIdSet(LS_DISLIKED);
+
+function toggleLike(id) {{
+  const sid = String(id);
+  if (likedIds.has(sid)) likedIds.delete(sid);
+  else {{
+    likedIds.add(sid);
+    dislikedIds.delete(sid);
+  }}
+  saveIdSet(LS_LIKED, likedIds);
+  saveIdSet(LS_DISLIKED, dislikedIds);
+  render();
+}}
+
+function toggleDislike(id) {{
+  const sid = String(id);
+  if (dislikedIds.has(sid)) dislikedIds.delete(sid);
+  else {{
+    dislikedIds.add(sid);
+    likedIds.delete(sid);
+  }}
+  saveIdSet(LS_LIKED, likedIds);
+  saveIdSet(LS_DISLIKED, dislikedIds);
+  render();
+}}
 
 function initFuelChecks() {{
   const fuels = [...new Set(DATA.map(c => c.fuel))].sort();
@@ -644,6 +726,8 @@ function getFilters() {{
     engineMax: Number(document.getElementById("fEngineMax").value) || Infinity,
     fuels: checkedFuels,
     newOnly: document.getElementById("fNewOnly").checked,
+    likedOnly: document.getElementById("fLikedOnly").checked,
+    hideDisliked: document.getElementById("fHideDisliked").checked,
   }};
 }}
 
@@ -659,6 +743,8 @@ function applyFilters(cars) {{
     if (c.engine != null && (c.engine < f.engineMin || c.engine > f.engineMax)) return false;
     if (!f.fuels.has(c.fuel)) return false;
     if (f.newOnly && !c.is_new) return false;
+    if (f.likedOnly && !likedIds.has(String(c.id))) return false;
+    if (f.hideDisliked && dislikedIds.has(String(c.id))) return false;
     return true;
   }});
 }}
@@ -693,11 +779,23 @@ function render() {{
   const filtered = sortCars(applyFilters(DATA));
   const tbody = document.getElementById("tbody");
   const rows = filtered.map(c => {{
-    const cls = c.is_new ? ' class="new-row"' : "";
     const badge = c.is_new ? '<span class="badge">NEW</span>' : "";
+    const sid = String(c.id);
+    const liked = likedIds.has(sid);
+    const disliked = dislikedIds.has(sid);
+    const rowClasses = [];
+    if (c.is_new) rowClasses.push("new-row");
+    if (liked) rowClasses.push("row-liked");
+    if (disliked) rowClasses.push("row-disliked");
+    const cls = rowClasses.length ? ` class="${{rowClasses.join(" ")}}"` : "";
+    const idAttr = sid.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
     return `<tr${{cls}}>
       <td>${{c.make}}${{badge}}</td>
       <td>${{c.model || c.title}}</td>
+      <td class="listing-actions">
+        <button type="button" class="btn-like${{liked ? " is-on" : ""}}" data-action="like" data-id="${{idAttr}}" title="Save to revisit" aria-label="Like listing" aria-pressed="${{liked}}">♥</button>
+        <button type="button" class="btn-dislike${{disliked ? " is-on" : ""}}" data-action="dislike" data-id="${{idAttr}}" title="Not interested" aria-label="Dislike listing" aria-pressed="${{disliked}}">✕</button>
+      </td>
       <td class="price">${{fmtPrice(c)}}</td>
       <td>${{c.year || "?"}}</td>
       <td class="mileage">${{fmtMileage(c)}}</td>
@@ -744,10 +842,22 @@ document.querySelectorAll("th[data-col]").forEach(th => {{
   document.getElementById(id).addEventListener("input", render);
 }});
 document.getElementById("fNewOnly").addEventListener("change", render);
+document.getElementById("fLikedOnly").addEventListener("change", render);
+document.getElementById("fHideDisliked").addEventListener("change", render);
 document.getElementById("fNewFirst").addEventListener("change", render);
 
 initFuelChecks();
 initMakeModel();
+
+document.getElementById("tbody").addEventListener("click", (e) => {{
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const id = btn.getAttribute("data-id");
+  if (!id) return;
+  if (btn.dataset.action === "like") toggleLike(id);
+  else if (btn.dataset.action === "dislike") toggleDislike(id);
+}});
+
 render();
 document.querySelector('th[data-col="price_usd"] .arrow').textContent = " \\u25B2";
 </script>
