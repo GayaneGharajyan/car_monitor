@@ -6,7 +6,7 @@ Scrapes [list.am](https://www.list.am) car listings with pre-configured filters 
 
 | Filter | Value |
 |---|---|
-| Price | <= $15,001 (or ~5,850,390 AMD) |
+| Price | $5,000–$15,001 (or ~1,950,000–5,850,390 AMD) |
 | Makes | Chevrolet, Ford, Honda, Hyundai, Kia, Mazda, Mitsubishi, Nissan, Subaru, Toyota, Peugeot, Renault, Suzuki, Volkswagen |
 | Engine type | Gasoline, Hybrid, Factory LPG/CNG |
 | Engine size | > 1.2L |

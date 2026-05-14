@@ -5,7 +5,7 @@ list.am Car Listing Monitor
 Periodically scrapes list.am with pre-applied filters and alerts about new listings.
 
 Filters enforced:
-  - Price: <= $15,001 (or ~5,850,390 AMD)
+  - Price: $5,000–$15,001 (or ~1,950,000–5,850,390 AMD)
   - Engine: Gasoline, Hybrid, Factory LPG/CNG, >1.2L
   - Condition: Not damaged
   - Steering wheel: Left
@@ -35,7 +35,7 @@ SITE = "https://www.list.am"
 
 FILTER_PARAMS = (
     "n=0&bid=55%2C76%2C11%2C13%2C14%2C22%2C27%2C31%2C38%2C53%2C60%2C64%2C75%2C79"
-    "&crc=1&price2=15001"
+    "&crc=1&price1=5000&price2=15001"
     "&_a27=0"           # not damaged
     "&_a15=1%2C4%2C6"  # gasoline, hybrid, factory LPG/CNG
     "&_a28_1=13"        # engine size > 1.2L
@@ -48,6 +48,8 @@ FILTER_PARAMS = (
 
 CATEGORY = "/category/23"
 
+MIN_PRICE_USD = 5_000
+MIN_PRICE_AMD = 1_950_000
 MAX_PRICE_USD = 15_001
 MAX_PRICE_AMD = 5_850_390
 AMD_PER_USD = 390
@@ -176,9 +178,9 @@ def price_ok(price: int | None, currency: str | None) -> bool:
     if price is None or currency is None:
         return False
     if currency == "USD":
-        return price <= MAX_PRICE_USD
+        return MIN_PRICE_USD <= price <= MAX_PRICE_USD
     if currency == "AMD":
-        return price <= MAX_PRICE_AMD
+        return MIN_PRICE_AMD <= price <= MAX_PRICE_AMD
     return False
 
 
@@ -525,7 +527,7 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
   </div>
   <div class="filter-group">
     <label>Price min ($)</label>
-    <input type="number" id="fPriceMin" placeholder="0">
+    <input type="number" id="fPriceMin" placeholder="5000">
   </div>
   <div class="filter-group">
     <label>Price max ($)</label>
