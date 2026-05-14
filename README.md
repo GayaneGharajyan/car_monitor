@@ -15,6 +15,7 @@ Scrapes [list.am](https://www.list.am) car listings with pre-configured filters 
 | Steering wheel | Left |
 | Customs | Cleared |
 | Freshness | Renewed after Jul 2025, or posted after Nov 2024 |
+| Excluded models | Nissan Tiida, Ford Fiesta, Renault Megane, Renault Logan, Renault Clio |
 
 ## Requirements
 

@@ -10,6 +10,7 @@ Filters enforced:
   - Condition: Not damaged
   - Steering wheel: Left
   - Freshness: renewed after Jul 2025, or posted after Nov 2024
+  - Excluded: Nissan Tiida, Ford Fiesta, Renault Megane/Logan/Clio
 
 Usage:
     python3 car_monitor.py                  # single scan
@@ -55,6 +56,14 @@ MAX_PRICE_AMD = 5_850_390
 AMD_PER_USD = 390
 
 ALLOWED_FUELS = {"Benzin", "Hybrid", "Factory LPG/CNG"}
+
+EXCLUDED_MODELS = {
+    ("Nissan", "Tiida"),
+    ("Ford", "Fiesta"),
+    ("Renault", "Megane"),
+    ("Renault", "Logan"),
+    ("Renault", "Clio"),
+}
 
 RENEWED_CUTOFF = datetime(2025, 7, 1)
 POSTED_CUTOFF = datetime(2024, 11, 1)
@@ -186,6 +195,16 @@ def price_ok(price: int | None, currency: str | None) -> bool:
 
 def fuel_ok(fuel: str) -> bool:
     return fuel in ALLOWED_FUELS
+
+
+def model_ok(title: str) -> bool:
+    name_part = title.split(",")[0].strip()
+    parts = name_part.split()
+    if not parts:
+        return True
+    make = parts[0]
+    model = " ".join(parts[1:]) if len(parts) > 1 else ""
+    return (make, model) not in EXCLUDED_MODELS
 
 
 def fetch_listing_dates(url: str) -> tuple[datetime | None, datetime | None]:
@@ -883,6 +902,7 @@ def run_scan() -> list[dict]:
     matching = [
         c for c in all_cars
         if price_ok(c["price"], c["currency"]) and fuel_ok(c["fuel"])
+        and model_ok(c["title"])
     ]
     matching.sort(key=lambda c: c["price_usd"])
 
