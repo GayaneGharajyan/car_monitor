@@ -55,7 +55,7 @@ When new listings are found, a native macOS notification is sent (with sound).
 After each scan, a self-contained `cars.html` file is generated with:
 
 - **Summary stats** — total listings, new count, price range, year range
-- **Filters** — search, make, model, price, year, mileage, engine size, fuel type, "new only"
+- **Filters** — search, make, model, price, year, mileage, engine size, fuel type, "new only", "dealer only", "VIN available"
 - **Sortable table** — click any column header to sort
 - **Mobile-friendly** — responsive layout with horizontally scrollable table
 

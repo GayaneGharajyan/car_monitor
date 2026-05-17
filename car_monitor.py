@@ -207,12 +207,12 @@ def model_ok(title: str) -> bool:
     return (make, model) not in EXCLUDED_MODELS
 
 
-def fetch_listing_dates(url: str) -> tuple[datetime | None, datetime | None]:
-    """Fetch a listing detail page and extract (posted, renewed) dates."""
+def fetch_listing_details(url: str) -> tuple[datetime | None, datetime | None, bool, bool]:
+    """Fetch a listing detail page and extract (posted, renewed, dealer, has_vin)."""
     en_url = url.replace("/item/", "/en/item/")
     html = fetch(en_url)
     if not html:
-        return None, None
+        return None, None, False, False
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(" ", strip=True)
     posted = renewed = None
@@ -222,7 +222,10 @@ def fetch_listing_dates(url: str) -> tuple[datetime | None, datetime | None]:
     m = re.search(r"Renewed\s+(\d{2}\.\d{2}\.\d{4})", text)
     if m:
         renewed = datetime.strptime(m.group(1), "%d.%m.%Y")
-    return posted, renewed
+    dealer = "\u0561\u057e\u057f\u0578\u057d\u0580\u0561\u0570" in text or "\u057a\u0561\u0577\u057f\u0578\u0576\u0561\u056f\u0561\u0576 \u0576\u0565\u0580\u056f\u0561\u0575\u0561\u0581\u0578\u0582\u0581" in text
+    has_vin = bool(re.search(r"VIN\b", text, re.IGNORECASE) and
+                   re.search(r"\b[A-HJ-NPR-Z0-9]{17}\b", text))
+    return posted, renewed, dealer, has_vin
 
 
 def is_listing_fresh(posted: datetime | None, renewed: datetime | None) -> bool:
@@ -601,6 +604,18 @@ def generate_html(matching: list[dict], new_car_ids: set[str]) -> None:
   <div class="filter-group">
     <label>&nbsp;</label>
     <label class="fuel-checks" style="padding-top:0">
+      <input type="checkbox" id="fDealerOnly"> Dealer only
+    </label>
+  </div>
+  <div class="filter-group">
+    <label>&nbsp;</label>
+    <label class="fuel-checks" style="padding-top:0">
+      <input type="checkbox" id="fVinOnly"> VIN available
+    </label>
+  </div>
+  <div class="filter-group">
+    <label>&nbsp;</label>
+    <label class="fuel-checks" style="padding-top:0">
       <input type="checkbox" id="fNewFirst" checked> New first
     </label>
   </div>
@@ -749,6 +764,8 @@ function getFilters() {{
     newOnly: document.getElementById("fNewOnly").checked,
     likedOnly: document.getElementById("fLikedOnly").checked,
     hideDisliked: document.getElementById("fHideDisliked").checked,
+    dealerOnly: document.getElementById("fDealerOnly").checked,
+    vinOnly: document.getElementById("fVinOnly").checked,
   }};
 }}
 
@@ -764,6 +781,8 @@ function applyFilters(cars) {{
     if (c.engine != null && (c.engine < f.engineMin || c.engine > f.engineMax)) return false;
     if (!f.fuels.has(c.fuel)) return false;
     if (f.newOnly && !c.is_new) return false;
+    if (f.dealerOnly && !c.dealer) return false;
+    if (f.vinOnly && !c.has_vin) return false;
     if (f.likedOnly && !likedIds.has(String(c.id))) return false;
     if (f.hideDisliked && dislikedIds.has(String(c.id))) return false;
     return true;
@@ -863,6 +882,8 @@ document.querySelectorAll("th[data-col]").forEach(th => {{
   document.getElementById(id).addEventListener("input", render);
 }});
 document.getElementById("fNewOnly").addEventListener("change", render);
+document.getElementById("fDealerOnly").addEventListener("change", render);
+document.getElementById("fVinOnly").addEventListener("change", render);
 document.getElementById("fLikedOnly").addEventListener("change", render);
 document.getElementById("fHideDisliked").addEventListener("change", render);
 document.getElementById("fNewFirst").addEventListener("change", render);
@@ -908,21 +929,26 @@ def run_scan() -> list[dict]:
 
     seen = load_seen()
 
-    need_check = [c for c in matching if "fresh" not in seen.get(c["id"], {})]
+    need_check = [c for c in matching
+                  if "fresh" not in seen.get(c["id"], {})
+                  or "dealer" not in seen.get(c["id"], {})
+                  or "has_vin" not in seen.get(c["id"], {})]
     if need_check:
-        print(f"\n  Checking listing freshness ({len(need_check)} detail pages)...")
+        print(f"\n  Checking listing details ({len(need_check)} detail pages)...")
         for i, car in enumerate(need_check, 1):
             sys.stdout.write(f"\r  Checking {i}/{len(need_check)}...")
             sys.stdout.flush()
-            posted, renewed = fetch_listing_dates(car["link"])
+            posted, renewed, dealer, has_vin = fetch_listing_details(car["link"])
             fresh = is_listing_fresh(posted, renewed)
             entry = seen.setdefault(car["id"], {})
             entry["fresh"] = fresh
+            entry["dealer"] = dealer
+            entry["has_vin"] = has_vin
             entry["posted"] = posted.strftime("%Y-%m-%d") if posted else None
             entry["renewed"] = renewed.strftime("%Y-%m-%d") if renewed else None
             time.sleep(REQUEST_DELAY)
         save_seen(seen)
-        print(f"\r  Freshness check complete.{' ' * 40}")
+        print(f"\r  Detail check complete.{' ' * 40}")
 
     fresh_matching = [c for c in matching if seen.get(c["id"], {}).get("fresh", True)]
     stale_count = len(matching) - len(fresh_matching)
@@ -940,6 +966,10 @@ def run_scan() -> list[dict]:
             "last_seen": now,
         })
     save_seen(seen)
+
+    for c in matching:
+        c["dealer"] = seen.get(c["id"], {}).get("dealer", False)
+        c["has_vin"] = seen.get(c["id"], {}).get("has_vin", False)
 
     new_car_ids = {c["id"] for c in new_cars}
     generate_html(matching, new_car_ids)
